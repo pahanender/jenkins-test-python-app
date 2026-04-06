@@ -1,23 +1,22 @@
 pipeline {
     agent any
 
+    environment {
+        SONAR_HOST = 'http://95.174.93.5:9000'
+        SONAR_TOKEN = credentials('sonar-token')
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                echo '📦 Ready'
-            }
-        }
-
-        stage('Python Setup') {
-            steps {
-                echo '🐍 Python в Docker:'
-                sh 'docker run --rm python:3.11-slim python3 --version'
+                echo '📦 Клонируем репозиторий...'
+                checkout scm
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo '📥 Установка...'
+                echo '📥 Установка зависимостей...'
                 sh '''
                     docker run --rm -v $(pwd):/app -w /app python:3.11-slim \
                         sh -c 'if [ -f "requirements.txt" ]; then pip3 install -r requirements.txt; else echo "Flask==2.3.0" > requirements.txt && pip3 install -r requirements.txt; fi'
@@ -25,18 +24,48 @@ pipeline {
             }
         }
 
+        stage('SonarQube Analysis') {
+            steps {
+                echo '🔍 Анализ кода в SonarQube...'
+                sh '''
+                    # Скачиваем sonar-scanner CLI
+                    echo "⬇️ Скачиваем sonar-scanner..."
+                    curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+                    
+                    echo "📦 Распаковываем..."
+                    unzip -q sonar-scanner.zip
+                    rm sonar-scanner.zip
+                    
+                    echo "🚀 Запускаем анализ..."
+                    ./sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
+                        -Dsonar.projectKey=jenkins-python-app \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONAR_HOST} \
+                        -Dsonar.token=${SONAR_TOKEN} \
+                        -Dsonar.python.version=3.11 \
+                        -Dsonar.projectName="Jenkins Python App"
+                '''
+            }
+        }
+
         stage('Build') {
             steps {
-                echo '🔨 Build #${BUILD_NUMBER} done'
-                sh 'docker run --rm -v $(pwd):/app -w /app python:3.11-slim ls -la'
+                echo '🔨 Сборка #${BUILD_NUMBER} завершена!'
+                sh 'ls -la'
             }
         }
     }
 
     post {
         always {
-            echo '✅ Finished'
+            echo '✅ Pipeline finished'
             cleanWs()
+        }
+        failure {
+            echo '❌ Pipeline failed - check logs'
+        }
+        success {
+            echo '🎉 Build successful!'
         }
     }
 }
