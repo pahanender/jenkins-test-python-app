@@ -3,7 +3,6 @@ pipeline {
 
     environment {
         SONAR_HOST = 'http://95.174.93.5:9000'
-        // Токен берётся из Jenkins credentials
         SONAR_TOKEN = credentials('sonar-token')
     }
 
@@ -34,12 +33,12 @@ pipeline {
                     unzip -q sonar-scanner.zip
                     rm sonar-scanner.zip
                     
-                    # Запускаем анализ
-                    # ВАЖНО: не передаём -Dsonar.token явно, если настроен сервер в Jenkins
+                    # Запускаем анализ с ЯВНОЙ передачей токена
                     ./sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
                         -Dsonar.projectKey=jenkins-python-app \
                         -Dsonar.sources=. \
                         -Dsonar.host.url=${SONAR_HOST} \
+                        -Dsonar.token=${SONAR_TOKEN} \
                         -Dsonar.python.version=3.11 \
                         -Dsonar.projectName="Jenkins Python App"
                 '''
