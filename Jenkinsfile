@@ -34,22 +34,25 @@ pipeline {
             }
         }
 
-        stage('🧪 Test') {
-            steps {
-                echo 'Запускаем тесты...'
-                sh '''
-                    # Создаём простую проверку (заглушка для примера)
-                    if [ -d "tests" ]; then
-                        docker run --rm -v $(pwd):/app -w /app python:3.11-slim python3 -m pytest tests/ --tb=short
-                    else
-                        echo "⚠️ Директория tests не найдена, создаём тест-заглушку..."
-                        mkdir -p tests
-                        echo "def test_dummy(): assert True" > tests/test_app.py
-                        docker run --rm -v $(pwd):/app -w /app python:3.11-slim python3 -m pytest tests/ -v
-                    fi
-                '''
-            }
-        }
+       stage('🧪 Test') {
+    steps {
+        echo 'Запускаем тесты...'
+        sh '''
+            if [ -d "tests" ]; then
+                # Устанавливаем pytest и запускаем тесты
+                docker run --rm -v $(pwd):/app -w /app python:3.11-slim \
+                    sh -c 'pip3 install --quiet pytest && python3 -m pytest tests/ -v'
+            else
+                echo "⚠️ Директория tests не найдена, создаём тест-заглушку..."
+                mkdir -p tests
+                echo "def test_dummy(): assert True" > tests/test_app.py
+                # Устанавливаем pytest и запускаем
+                docker run --rm -v $(pwd):/app -w /app python:3.11-slim \
+                    sh -c 'pip3 install --quiet pytest && python3 -m pytest tests/ -v'
+            fi
+        '''
+    }
+}
 
         stage('🔨 Build Artifact') {
             steps {
